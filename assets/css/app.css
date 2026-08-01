@@ -98,26 +98,6 @@ body {
   background: #211d15;
 }
 
-.rail-select {
-  cursor: default;
-}
-
-.rail-dropdown {
-  background: transparent;
-  border: none;
-  color: var(--ink);
-  font-family: inherit;
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  outline: none;
-  cursor: pointer;
-}
-
-.rail-dropdown option {
-  background: var(--ground-raised);
-  color: var(--ink);
-}
-
 .rail-status {
   cursor: default;
   margin-left: auto;
@@ -248,12 +228,44 @@ body {
   font-size: 0.85rem;
 }
 
+.dock-wrap {
+  border-top: 1px solid var(--hairline);
+  background: var(--ground-raised);
+  padding: 0.6rem 1.5rem 1.25rem;
+}
+
+.dock-model-form {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.dock-model-select {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--ink-dim);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  padding: 0.3rem 0.5rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.dock-model-select:hover,
+.dock-model-select:focus {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+}
+
+.dock-model-select option {
+  background: var(--ground-raised);
+  color: var(--ink);
+}
+
 .dock {
   display: flex;
   gap: 0.75rem;
-  padding: 1rem 1.5rem 1.25rem;
-  border-top: 1px solid var(--hairline);
-  background: var(--ground-raised);
 }
 
 .dock-input {

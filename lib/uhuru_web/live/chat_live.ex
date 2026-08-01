@@ -5,11 +5,27 @@ defmodule UhuruWeb.ChatLive do
 
   # Together's model listing doesn't reliably flag which models are callable
   # on shared serverless capacity vs. which need a paid dedicated endpoint —
-  # this list is only IDs verified against the live chat/completions API.
-  @together_models [
-    {"Qwen/Qwen2.5-7B-Instruct-Turbo", "Qwen 2.5 7B — fast"},
-    {"meta-llama/Llama-3.3-70B-Instruct-Turbo", "Llama 3.3 70B — stronger"},
-    {"deepseek-ai/DeepSeek-V3", "DeepSeek V3 — frontier-class, sometimes busy"}
+  # these IDs are verified against the live chat/completions API.
+  @model_choices [
+    %{value: "granville", label: "Local — Granville", provider: :granville, model: nil},
+    %{
+      value: "together:Qwen/Qwen2.5-7B-Instruct-Turbo",
+      label: "Together — Qwen 2.5 7B (fast)",
+      provider: :together,
+      model: "Qwen/Qwen2.5-7B-Instruct-Turbo"
+    },
+    %{
+      value: "together:meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      label: "Together — Llama 3.3 70B (stronger)",
+      provider: :together,
+      model: "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+    },
+    %{
+      value: "together:deepseek-ai/DeepSeek-V3",
+      label: "Together — DeepSeek V3 (frontier, sometimes busy)",
+      provider: :together,
+      model: "deepseek-ai/DeepSeek-V3"
+    }
   ]
 
   @impl true
@@ -27,15 +43,16 @@ defmodule UhuruWeb.ChatLive do
   end
 
   defp init_chat(socket) do
-    {default_model, _label} = hd(@together_models)
+    default = hd(@model_choices)
 
     socket
     |> assign(
       page_title: "Uhuru",
       draft: "",
-      provider: :granville,
-      together_model: default_model,
-      together_models: @together_models,
+      model_choice: default.value,
+      provider: default.provider,
+      together_model: default.model,
+      model_choices: @model_choices,
       redact: false,
       pending: false,
       next_id: 1
@@ -88,17 +105,13 @@ defmodule UhuruWeb.ChatLive do
     {:noreply, assign(socket, draft: text)}
   end
 
-  def handle_event("toggle_provider", _params, socket) do
-    next = if socket.assigns.provider == :granville, do: :together, else: :granville
-    {:noreply, assign(socket, provider: next)}
-  end
-
   def handle_event("toggle_redact", _params, socket) do
     {:noreply, assign(socket, redact: !socket.assigns.redact)}
   end
 
-  def handle_event("select_together_model", %{"model" => model}, socket) do
-    {:noreply, assign(socket, together_model: model)}
+  def handle_event("select_model", %{"model_choice" => value}, socket) do
+    choice = Enum.find(@model_choices, &(&1.value == value))
+    {:noreply, assign(socket, model_choice: choice.value, provider: choice.provider, together_model: choice.model)}
   end
 
   def handle_event("send", %{"message" => %{"text" => raw_text}}, socket) do
@@ -220,22 +233,10 @@ defmodule UhuruWeb.ChatLive do
           />
         <% :unlocked -> %>
           <div class="rail">
-            <button type="button" phx-click="toggle_provider" class="rail-item">
+            <div class="rail-item rail-status">
               <span class={"dot #{if @provider == :granville, do: "dot-local", else: "dot-cloud"}"}></span>
-              <span class="rail-label">provider</span>
-              <span class="rail-value">{provider_label(@provider)}</span>
-            </button>
-
-            <div :if={@provider == :together} class="rail-item rail-select">
-              <span class="dot dot-cloud"></span>
               <span class="rail-label">model</span>
-              <form phx-change="select_together_model">
-                <select name="model" class="rail-dropdown">
-                  <option :for={{id, label} <- @together_models} value={id} selected={id == @together_model}>
-                    {label}
-                  </option>
-                </select>
-              </form>
+              <span class="rail-value">{provider_label(@provider)}</span>
             </div>
 
             <button type="button" phx-click="toggle_redact" class="rail-item">
@@ -266,17 +267,27 @@ defmodule UhuruWeb.ChatLive do
             </div>
           </main>
 
-          <form phx-submit="send" phx-change="update_draft" class="dock">
-            <textarea
-              name="message[text]"
-              class="dock-input"
-              placeholder="speak freely — this stays on your machine unless you say otherwise"
-              rows="2"
-            >{@draft}</textarea>
-            <button type="submit" class="dock-submit" disabled={@pending}>
-              {if @pending, do: "…", else: "send"}
-            </button>
-          </form>
+          <div class="dock-wrap">
+            <form phx-change="select_model" class="dock-model-form">
+              <select name="model_choice" class="dock-model-select">
+                <option :for={choice <- @model_choices} value={choice.value} selected={choice.value == @model_choice}>
+                  {choice.label}
+                </option>
+              </select>
+            </form>
+
+            <form phx-submit="send" phx-change="update_draft" class="dock">
+              <textarea
+                name="message[text]"
+                class="dock-input"
+                placeholder="speak freely — this stays on your machine unless you say otherwise"
+                rows="2"
+              >{@draft}</textarea>
+              <button type="submit" class="dock-submit" disabled={@pending}>
+                {if @pending, do: "…", else: "send"}
+              </button>
+            </form>
+          </div>
       <% end %>
     </div>
     """

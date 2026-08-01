@@ -82,21 +82,35 @@ defmodule UhuruWeb.ChatLiveTest do
       :ok
     end
 
-    test "renders the shell with local provider and redaction off by default", %{conn: conn} do
+    test "renders the shell with local provider and redaction off by default, model picker in the dock", %{
+      conn: conn
+    } do
       {:ok, _view, html} = live(conn, ~p"/")
 
       assert html =~ "UHURU"
       assert html =~ "LOCAL / GRANVILLE"
       assert html =~ ">OFF<"
+      assert html =~ "dock-model-select"
+      assert html =~ "Qwen 2.5 7B"
+      assert html =~ "Llama 3.3 70B"
+      assert html =~ "DeepSeek V3"
     end
 
-    test "toggle_provider switches between granville and together", %{conn: conn} do
+    test "selecting a model in the dock switches both provider and together_model", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
 
-      html = view |> element("button", "provider") |> render_click()
+      html =
+        view
+        |> element("form.dock-model-form")
+        |> render_change(%{"model_choice" => "together:meta-llama/Llama-3.3-70B-Instruct-Turbo"})
+
       assert html =~ "CLOUD / TOGETHER"
 
-      html = view |> element("button", "provider") |> render_click()
+      html =
+        view
+        |> element("form.dock-model-form")
+        |> render_change(%{"model_choice" => "granville"})
+
       assert html =~ "LOCAL / GRANVILLE"
     end
 
@@ -108,29 +122,6 @@ defmodule UhuruWeb.ChatLiveTest do
 
       html = view |> element("button", "redaction") |> render_click()
       assert html =~ ">OFF<"
-    end
-
-    test "model dropdown is hidden for granville and shown for together", %{conn: conn} do
-      {:ok, view, html} = live(conn, ~p"/")
-      refute html =~ "rail-select"
-
-      html = view |> element("button", "provider") |> render_click()
-      assert html =~ "rail-select"
-      assert html =~ "Qwen 2.5 7B"
-      assert html =~ "Llama 3.3 70B"
-      assert html =~ "DeepSeek V3"
-    end
-
-    test "selecting a together model updates the assign used for the next request", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/")
-      view |> element("button", "provider") |> render_click()
-
-      html =
-        view
-        |> element("form[phx-change=select_together_model]")
-        |> render_change(%{"model" => "meta-llama/Llama-3.3-70B-Instruct-Turbo"})
-
-      assert html =~ "Llama 3.3 70B"
     end
 
     test "lock_vault re-locks and returns to the unlock gate", %{conn: conn} do
@@ -145,7 +136,7 @@ defmodule UhuruWeb.ChatLiveTest do
     test "submitting blank text does not add a message", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
 
-      html = view |> form("form", message: %{text: "   "}) |> render_submit()
+      html = view |> form("form.dock", message: %{text: "   "}) |> render_submit()
 
       refute html =~ "log-entry-user"
     end
@@ -153,7 +144,7 @@ defmodule UhuruWeb.ChatLiveTest do
     test "sending a message with no provider configured surfaces a graceful error", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
 
-      html = view |> form("form", message: %{text: "hello, uhuru"}) |> render_submit()
+      html = view |> form("form.dock", message: %{text: "hello, uhuru"}) |> render_submit()
       assert html =~ "hello, uhuru"
       assert html =~ "awaiting response"
 
