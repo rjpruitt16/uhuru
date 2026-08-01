@@ -62,7 +62,7 @@ config :uhuru, Uhuru.Providers.Granville,
   timeout_ms: 120_000
 
 config :uhuru, Uhuru.Providers.Together,
-  model: "meta-llama/Llama-3.1-8B-Instruct-Turbo",
+  model: "Qwen/Qwen2.5-7B-Instruct-Turbo",
   base_url: "https://api.together.xyz/v1",
   timeout_ms: 60_000
 

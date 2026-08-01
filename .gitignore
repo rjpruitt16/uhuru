@@ -39,3 +39,6 @@ npm-debug.log
 *.db
 *.db-*
 
+# Local secrets — never commit real API keys, see .env.example
+.env
+
