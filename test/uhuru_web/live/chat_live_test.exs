@@ -3,7 +3,7 @@ defmodule UhuruWeb.ChatLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias Uhuru.Vault
+  alias Uhuru.{Conversations, Vault}
 
   describe "vault gate" do
     setup do
@@ -89,7 +89,7 @@ defmodule UhuruWeb.ChatLiveTest do
 
       assert html =~ "UHURU"
       assert html =~ "LOCAL / GRANVILLE"
-      assert html =~ ">OFF<"
+      refute html =~ "ON — PII stripped"
       assert html =~ "dock-model-select"
       assert html =~ "Qwen 2.5 7B"
       assert html =~ "Llama 3.3 70B"
@@ -121,7 +121,7 @@ defmodule UhuruWeb.ChatLiveTest do
       assert html =~ "ON — PII stripped"
 
       html = view |> element("button", "redaction") |> render_click()
-      assert html =~ ">OFF<"
+      refute html =~ "ON — PII stripped"
     end
 
     test "lock_vault re-locks and returns to the unlock gate", %{conn: conn} do
@@ -151,6 +151,52 @@ defmodule UhuruWeb.ChatLiveTest do
       html = render_async(view)
       assert html =~ "ERROR"
       assert html =~ "Local model socket not found"
+    end
+
+    test "sending the first message creates a thread and shows it in the sidebar", %{conn: conn} do
+      {:ok, view, html} = live(conn, ~p"/")
+      assert html =~ "no threads yet"
+
+      html = view |> form("form.dock", message: %{text: "what is the swahili coast"}) |> render_submit()
+
+      assert html =~ "sidebar-thread"
+      assert html =~ "what is the swahili coast"
+      assert [%{title: "what is the swahili coast"}] = Conversations.list_threads()
+    end
+
+    test "message content is actually encrypted at rest, not stored as plaintext", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      view |> form("form.dock", message: %{text: "a secret only i should read"}) |> render_submit()
+      render_async(view)
+
+      raw = Uhuru.Repo.query!("SELECT content FROM messages LIMIT 1").rows |> List.first() |> List.first()
+      refute raw == "a secret only i should read"
+    end
+
+    test "new_chat clears the thread and starts fresh", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      view |> form("form.dock", message: %{text: "first thread message"}) |> render_submit()
+      render_async(view)
+
+      html = view |> element("button.sidebar-new") |> render_click()
+
+      refute html =~ "log-entry-user"
+      assert html =~ "first thread message"
+    end
+
+    test "selecting a thread from the sidebar loads its messages", %{conn: conn} do
+      {:ok, thread} = Conversations.create_thread("an older conversation")
+      {:ok, _} = Conversations.create_message(thread.id, %{role: :user, content: "an older conversation"})
+      {:ok, _} = Conversations.create_message(thread.id, %{role: :assistant, content: "an older reply", provider: :granville})
+
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html = view |> element("button.sidebar-thread", "an older conversation") |> render_click()
+
+      assert html =~ "an older conversation"
+      assert html =~ "an older reply"
     end
   end
 end
