@@ -13,6 +13,7 @@ defmodule Uhuru.Application do
       {Ecto.Migrator,
         repos: Application.fetch_env!(:uhuru, :ecto_repos),
         skip: skip_migrations?()},
+      Uhuru.Vault,
       {DNSCluster, query: Application.get_env(:uhuru, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Uhuru.PubSub},
       # Start a worker by calling: Uhuru.Worker.start_link(arg)

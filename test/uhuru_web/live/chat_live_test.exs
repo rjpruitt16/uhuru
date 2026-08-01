@@ -3,51 +3,140 @@ defmodule UhuruWeb.ChatLiveTest do
 
   import Phoenix.LiveViewTest
 
-  test "renders the shell with local provider and redaction off by default", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/")
+  alias Uhuru.Vault
 
-    assert html =~ "UHURU"
-    assert html =~ "LOCAL / GRANVILLE"
-    assert html =~ ">OFF<"
+  describe "vault gate" do
+    setup do
+      Vault.lock()
+      :ok
+    end
+
+    test "shows the setup screen when no vault exists yet", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      assert html =~ "set a passphrase"
+      assert html =~ "cannot be recovered"
+    end
+
+    test "creating the vault with mismatched passphrases shows an error", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html =
+        view
+        |> form("form", passphrase: %{value: "abc", confirm: "xyz"})
+        |> render_submit()
+
+      assert html =~ "don&#39;t match" or html =~ "don't match"
+      refute Vault.set_up?()
+    end
+
+    test "creating the vault with matching passphrases unlocks straight into chat", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html =
+        view
+        |> form("form", passphrase: %{value: "correct horse", confirm: "correct horse"})
+        |> render_submit()
+
+      assert html =~ "LOCAL / GRANVILLE"
+      assert Vault.set_up?()
+      refute Vault.locked?()
+    end
+
+    test "shows the unlock screen once set up but locked", %{conn: conn} do
+      :ok = Vault.setup("existing passphrase")
+      Vault.lock()
+
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      assert html =~ "enter your passphrase"
+    end
+
+    test "unlocking with the wrong passphrase shows an error and stays locked", %{conn: conn} do
+      :ok = Vault.setup("existing passphrase")
+      Vault.lock()
+
+      {:ok, view, _html} = live(conn, ~p"/")
+      html = view |> form("form", passphrase: %{value: "wrong"}) |> render_submit()
+
+      assert html =~ "Incorrect passphrase"
+      assert Vault.locked?()
+    end
+
+    test "unlocking with the correct passphrase reaches chat", %{conn: conn} do
+      :ok = Vault.setup("existing passphrase")
+      Vault.lock()
+
+      {:ok, view, _html} = live(conn, ~p"/")
+      html = view |> form("form", passphrase: %{value: "existing passphrase"}) |> render_submit()
+
+      assert html =~ "LOCAL / GRANVILLE"
+      refute Vault.locked?()
+    end
   end
 
-  test "toggle_provider switches between granville and together", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/")
+  describe "chat, once unlocked" do
+    setup do
+      Vault.lock()
+      :ok = Vault.setup("test passphrase")
+      :ok
+    end
 
-    html = view |> element("button", "provider") |> render_click()
-    assert html =~ "CLOUD / TOGETHER"
+    test "renders the shell with local provider and redaction off by default", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/")
 
-    html = view |> element("button", "provider") |> render_click()
-    assert html =~ "LOCAL / GRANVILLE"
-  end
+      assert html =~ "UHURU"
+      assert html =~ "LOCAL / GRANVILLE"
+      assert html =~ ">OFF<"
+    end
 
-  test "toggle_redact switches PII redaction on and off", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/")
+    test "toggle_provider switches between granville and together", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
 
-    html = view |> element("button", "redaction") |> render_click()
-    assert html =~ "ON — PII stripped"
+      html = view |> element("button", "provider") |> render_click()
+      assert html =~ "CLOUD / TOGETHER"
 
-    html = view |> element("button", "redaction") |> render_click()
-    assert html =~ ">OFF<"
-  end
+      html = view |> element("button", "provider") |> render_click()
+      assert html =~ "LOCAL / GRANVILLE"
+    end
 
-  test "submitting blank text does not add a message", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/")
+    test "toggle_redact switches PII redaction on and off", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
 
-    html = view |> form("form", message: %{text: "   "}) |> render_submit()
+      html = view |> element("button", "redaction") |> render_click()
+      assert html =~ "ON — PII stripped"
 
-    refute html =~ "log-entry-user"
-  end
+      html = view |> element("button", "redaction") |> render_click()
+      assert html =~ ">OFF<"
+    end
 
-  test "sending a message with no provider configured surfaces a graceful error", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/")
+    test "lock_vault re-locks and returns to the unlock gate", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
 
-    html = view |> form("form", message: %{text: "hello, uhuru"}) |> render_submit()
-    assert html =~ "hello, uhuru"
-    assert html =~ "awaiting response"
+      html = view |> element("button", "vault") |> render_click()
 
-    html = render_async(view)
-    assert html =~ "ERROR"
-    assert html =~ "Local model socket not found"
+      assert html =~ "enter your passphrase"
+      assert Vault.locked?()
+    end
+
+    test "submitting blank text does not add a message", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html = view |> form("form", message: %{text: "   "}) |> render_submit()
+
+      refute html =~ "log-entry-user"
+    end
+
+    test "sending a message with no provider configured surfaces a graceful error", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html = view |> form("form", message: %{text: "hello, uhuru"}) |> render_submit()
+      assert html =~ "hello, uhuru"
+      assert html =~ "awaiting response"
+
+      html = render_async(view)
+      assert html =~ "ERROR"
+      assert html =~ "Local model socket not found"
+    end
   end
 end

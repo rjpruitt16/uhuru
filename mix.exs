@@ -57,7 +57,8 @@ defmodule Uhuru.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
       {:msgpax, "~> 2.4"},
-      {:req, "~> 0.5"}
+      {:req, "~> 0.5"},
+      {:argon2_elixir, "~> 4.1"}
     ]
   end
 
