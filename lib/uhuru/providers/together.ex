@@ -20,7 +20,7 @@ defmodule Uhuru.Providers.Together do
 
   defp request(api_key, prompt, opts) do
     body = %{
-      "model" => Keyword.get(opts, :model, config(:model, "meta-llama/Llama-3.1-8B-Instruct-Turbo")),
+      "model" => Keyword.get(opts, :model, config(:model, "Qwen/Qwen2.5-7B-Instruct-Turbo")),
       "messages" => [%{"role" => "user", "content" => prompt}],
       "max_tokens" => Keyword.get(opts, :max_tokens, 1024)
     }
