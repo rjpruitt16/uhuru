@@ -9,16 +9,12 @@ kill_signal = 'SIGTERM'
 
 [build]
 [env]
-  DATABASE_PATH = '/mnt/name/name.db'
+  # No persistent volume: Litestream restores this from Tigris on every
+  # boot and streams writes back continuously (see litestream.sh). An
+  # ephemeral path is intentional, not an oversight.
+  DATABASE_PATH = '/tmp/uhuru.db'
   PHX_HOST = 'uhuru.fly.dev'
   PORT = '8080'
-
-[[mounts]]
-  source = 'name'
-  destination = '/mnt/name'
-  auto_extend_size_threshold = 80
-  auto_extend_size_increment = '1GB'
-  auto_extend_size_limit = '10GB'
 
 [http_service]
   internal_port = 8080
