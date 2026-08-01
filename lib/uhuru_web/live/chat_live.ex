@@ -3,6 +3,15 @@ defmodule UhuruWeb.ChatLive do
 
   alias Uhuru.{Chat, Vault}
 
+  # Together's model listing doesn't reliably flag which models are callable
+  # on shared serverless capacity vs. which need a paid dedicated endpoint —
+  # this list is only IDs verified against the live chat/completions API.
+  @together_models [
+    {"Qwen/Qwen2.5-7B-Instruct-Turbo", "Qwen 2.5 7B — fast"},
+    {"meta-llama/Llama-3.3-70B-Instruct-Turbo", "Llama 3.3 70B — stronger"},
+    {"deepseek-ai/DeepSeek-V3", "DeepSeek V3 — frontier-class, sometimes busy"}
+  ]
+
   @impl true
   def mount(_params, _session, socket) do
     vault_state = cond do
@@ -18,8 +27,19 @@ defmodule UhuruWeb.ChatLive do
   end
 
   defp init_chat(socket) do
+    {default_model, _label} = hd(@together_models)
+
     socket
-    |> assign(page_title: "Uhuru", draft: "", provider: :granville, redact: false, pending: false, next_id: 1)
+    |> assign(
+      page_title: "Uhuru",
+      draft: "",
+      provider: :granville,
+      together_model: default_model,
+      together_models: @together_models,
+      redact: false,
+      pending: false,
+      next_id: 1
+    )
     |> stream(:messages, [])
   end
 
@@ -77,14 +97,23 @@ defmodule UhuruWeb.ChatLive do
     {:noreply, assign(socket, redact: !socket.assigns.redact)}
   end
 
+  def handle_event("select_together_model", %{"model" => model}, socket) do
+    {:noreply, assign(socket, together_model: model)}
+  end
+
   def handle_event("send", %{"message" => %{"text" => raw_text}}, socket) do
     text = String.trim(raw_text)
 
     if text == "" or socket.assigns.pending do
       {:noreply, socket}
     else
-      %{provider: provider, redact: redact, next_id: id} = socket.assigns
-      opts = [ranked: redact]
+      %{provider: provider, redact: redact, together_model: together_model, next_id: id} = socket.assigns
+
+      opts =
+        case provider do
+          :together -> [ranked: redact, model: together_model]
+          :granville -> [ranked: redact]
+        end
 
       socket =
         socket
@@ -196,6 +225,18 @@ defmodule UhuruWeb.ChatLive do
               <span class="rail-label">provider</span>
               <span class="rail-value">{provider_label(@provider)}</span>
             </button>
+
+            <div :if={@provider == :together} class="rail-item rail-select">
+              <span class="dot dot-cloud"></span>
+              <span class="rail-label">model</span>
+              <form phx-change="select_together_model">
+                <select name="model" class="rail-dropdown">
+                  <option :for={{id, label} <- @together_models} value={id} selected={id == @together_model}>
+                    {label}
+                  </option>
+                </select>
+              </form>
+            </div>
 
             <button type="button" phx-click="toggle_redact" class="rail-item">
               <span class={"dot #{if @redact, do: "dot-cloud", else: "dot-off"}"}></span>

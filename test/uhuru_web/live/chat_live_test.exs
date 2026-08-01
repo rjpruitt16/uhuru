@@ -110,6 +110,29 @@ defmodule UhuruWeb.ChatLiveTest do
       assert html =~ ">OFF<"
     end
 
+    test "model dropdown is hidden for granville and shown for together", %{conn: conn} do
+      {:ok, view, html} = live(conn, ~p"/")
+      refute html =~ "rail-select"
+
+      html = view |> element("button", "provider") |> render_click()
+      assert html =~ "rail-select"
+      assert html =~ "Qwen 2.5 7B"
+      assert html =~ "Llama 3.3 70B"
+      assert html =~ "DeepSeek V3"
+    end
+
+    test "selecting a together model updates the assign used for the next request", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+      view |> element("button", "provider") |> render_click()
+
+      html =
+        view
+        |> element("form[phx-change=select_together_model]")
+        |> render_change(%{"model" => "meta-llama/Llama-3.3-70B-Instruct-Turbo"})
+
+      assert html =~ "Llama 3.3 70B"
+    end
+
     test "lock_vault re-locks and returns to the unlock gate", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
 

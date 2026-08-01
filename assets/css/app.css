@@ -98,6 +98,26 @@ body {
   background: #211d15;
 }
 
+.rail-select {
+  cursor: default;
+}
+
+.rail-dropdown {
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  outline: none;
+  cursor: pointer;
+}
+
+.rail-dropdown option {
+  background: var(--ground-raised);
+  color: var(--ink);
+}
+
 .rail-status {
   cursor: default;
   margin-left: auto;
