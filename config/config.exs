@@ -57,7 +57,9 @@ config :phoenix, :json_library, Jason
 # runtime, see config/runtime.exs.
 config :uhuru, Uhuru.Providers.Granville,
   socket_path: "/tmp/granville.sock",
-  timeout_ms: 60_000
+  # ranked: true means every request is two model calls (rank+redact, then
+  # inference), roughly doubling latency versus a single completion.
+  timeout_ms: 120_000
 
 config :uhuru, Uhuru.Providers.Together,
   model: "meta-llama/Llama-3.1-8B-Instruct-Turbo",

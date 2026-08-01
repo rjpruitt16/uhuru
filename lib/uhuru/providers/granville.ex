@@ -9,13 +9,12 @@ defmodule Uhuru.Providers.Granville do
   connect *back* to our callback socket with the real result once
   inference finishes.
 
-  `ranked` is hardcoded to `false`. In Granville's current implementation,
-  `ranked: true` runs an extra model call that classifies priority AND asks
-  the model to redact PII, but the redacted text it produces is discarded —
-  only the priority label survives, and the *original* unredacted text is
-  what reaches inference either way. Paying that call's latency buys no
-  privacy today, so we skip it until Granville actually wires the redacted
-  text into the downstream request.
+  `ranked` is hardcoded to `true`: Granville runs a ranking pass that
+  classifies priority AND redacts PII before the redacted text (not the
+  original) reaches inference. That's a second full model call in the
+  critical path, so every request costs roughly double the latency of a
+  single completion — an intentional tradeoff for the privacy guarantee,
+  not an oversight.
   """
 
   @behaviour Uhuru.Provider
@@ -61,7 +60,7 @@ defmodule Uhuru.Providers.Granville do
       "id" => id,
       "text" => prompt,
       "callback" => callback_path,
-      "ranked" => false,
+      "ranked" => true,
       "max_tokens" => Keyword.get(opts, :max_tokens, 256)
     }
 
