@@ -52,6 +52,18 @@ config :logger, :console,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Provider adapters — Granville is the default local provider, Together AI
+# is an opt-in adapter for stronger models. API keys/secrets are loaded at
+# runtime, see config/runtime.exs.
+config :uhuru, Uhuru.Providers.Granville,
+  socket_path: "/tmp/granville.sock",
+  timeout_ms: 60_000
+
+config :uhuru, Uhuru.Providers.Together,
+  model: "meta-llama/Llama-3.1-8B-Instruct-Turbo",
+  base_url: "https://api.together.xyz/v1",
+  timeout_ms: 60_000
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
