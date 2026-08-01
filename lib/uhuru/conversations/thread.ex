@@ -3,7 +3,7 @@ defmodule Uhuru.Conversations.Thread do
   import Ecto.Changeset
 
   schema "threads" do
-    field :title, :string
+    field :title, Uhuru.Vault.EncryptedBinary
     has_many :messages, Uhuru.Conversations.Message
     timestamps()
   end
