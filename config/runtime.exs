@@ -20,9 +20,10 @@ if System.get_env("PHX_SERVER") do
   config :uhuru, UhuruWeb.Endpoint, server: true
 end
 
-# Together AI is opt-in and BYO-key; nil is a valid default (the adapter
-# returns {:error, :missing_api_key} rather than raising when unset).
+# Together AI and Exa are opt-in and BYO-key; nil is a valid default (both
+# adapters return {:error, :missing_api_key} rather than raising when unset).
 config :uhuru, Uhuru.Providers.Together, api_key: System.get_env("TOGETHER_API_KEY")
+config :uhuru, Uhuru.Search.Exa, api_key: System.get_env("EXA_API_KEY")
 
 if config_env() == :prod do
   database_path =

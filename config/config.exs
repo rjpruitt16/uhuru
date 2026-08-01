@@ -66,6 +66,10 @@ config :uhuru, Uhuru.Providers.Together,
   base_url: "https://api.together.xyz/v1",
   timeout_ms: 60_000
 
+config :uhuru, Uhuru.Search.Exa,
+  base_url: "https://api.exa.ai",
+  timeout_ms: 30_000
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
