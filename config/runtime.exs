@@ -30,7 +30,8 @@ config :uhuru, Uhuru.Search.Exa, api_key: System.get_env("EXA_API_KEY")
 # deploys that were never going to run one.
 config :uhuru, Uhuru.Providers.Granville,
   model_configured: System.get_env("GRANVILLE_MODEL_URL") not in [nil, ""],
-  model_label: System.get_env("GRANVILLE_MODEL_LABEL") || "Gemma 3 4B"
+  model_label: System.get_env("GRANVILLE_MODEL_LABEL") || "Gemma 3 4B",
+  model_path: System.get_env("GRANVILLE_MODEL_PATH") || "/data/model.gguf"
 
 if config_env() == :prod do
   database_path =

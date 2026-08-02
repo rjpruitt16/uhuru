@@ -57,6 +57,7 @@ defmodule UhuruWeb.ChatLive do
     default = hd(@model_choices)
     granville_configured = Granville.configured?()
     granville_ready = granville_configured and Granville.ready?()
+    granville_downloaded = granville_configured and Granville.downloaded?()
 
     if connected?(socket) and granville_configured and not granville_ready do
       Process.send_after(self(), :check_granville, 3000)
@@ -77,6 +78,7 @@ defmodule UhuruWeb.ChatLive do
       threads: Conversations.list_threads(),
       granville_configured: granville_configured,
       granville_ready: granville_ready,
+      granville_downloaded: granville_downloaded,
       streaming_reply: nil
     )
     |> stream(:messages, [])
@@ -86,7 +88,7 @@ defmodule UhuruWeb.ChatLive do
   def handle_info(:check_granville, socket) do
     ready = Granville.ready?()
     unless ready, do: Process.send_after(self(), :check_granville, 3000)
-    {:noreply, assign(socket, granville_ready: ready)}
+    {:noreply, assign(socket, granville_ready: ready, granville_downloaded: Granville.downloaded?())}
   end
 
   def handle_info({:tool_call, id, query}, socket) do
@@ -373,6 +375,10 @@ defmodule UhuruWeb.ChatLive do
   defp adapter_name(:granville), do: "Granville"
   defp adapter_name(:together), do: "Together"
 
+  defp granville_status(true, _downloaded), do: "loaded"
+  defp granville_status(false, false), do: "downloading model…"
+  defp granville_status(false, true), do: "loading into memory…"
+
   defp role_tag(:assistant), do: "REPLY"
   defp role_tag(:error), do: "ERROR"
 
@@ -505,7 +511,7 @@ defmodule UhuruWeb.ChatLive do
                     </span>
                     <span class="rail-label">local model</span>
                     <span class="rail-value">
-                      {if @granville_ready, do: "loaded", else: "downloading / loading…"}
+                      {granville_status(@granville_ready, @granville_downloaded)}
                     </span>
                   </div>
 

@@ -41,6 +41,17 @@ defmodule Uhuru.Providers.Granville do
   @spec ready?() :: boolean()
   def ready?, do: File.exists?(socket_path())
 
+  @doc """
+  Whether the model file itself has finished downloading to the volume.
+  Distinguishes "still fetching over the network" from "on disk, still
+  loading into memory" -- both look identical from ready?/0's point of
+  view (socket not up yet), but they're very different waits: a fresh
+  download of a multi-GB model vs. re-reading an already-cached file into
+  RAM after every cold start (volumes persist disk, not process memory).
+  """
+  @spec downloaded?() :: boolean()
+  def downloaded?, do: File.exists?(model_path())
+
   @doc "Friendly name for whatever model this deploy bundles, for message tags."
   @spec model_label() :: String.t()
   def model_label, do: config(:model_label, "Local Model")
@@ -176,6 +187,7 @@ defmodule Uhuru.Providers.Granville do
   end
 
   defp socket_path, do: config(:socket_path, "/tmp/granville.sock")
+  defp model_path, do: config(:model_path, "/data/model.gguf")
   defp timeout, do: config(:timeout_ms, 60_000)
 
   defp config(key, default),
