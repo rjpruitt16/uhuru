@@ -25,6 +25,12 @@ end
 config :uhuru, Uhuru.Providers.Together, api_key: System.get_env("TOGETHER_API_KEY")
 config :uhuru, Uhuru.Search.Exa, api_key: System.get_env("EXA_API_KEY")
 
+# Whether this deploy expects a local model (see boot.sh) -- lets the UI
+# show real loading/ready status instead of silently polling forever on
+# deploys that were never going to run one.
+config :uhuru, Uhuru.Providers.Granville,
+  model_configured: System.get_env("GRANVILLE_MODEL_URL") not in [nil, ""]
+
 if config_env() == :prod do
   database_path =
     System.get_env("DATABASE_PATH") ||

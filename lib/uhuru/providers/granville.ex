@@ -18,6 +18,22 @@ defmodule Uhuru.Providers.Granville do
 
   @behaviour Uhuru.Provider
 
+  @doc """
+  Whether this deploy expects a local model at all (GRANVILLE_MODEL_URL was
+  set at boot). False for Together-only deploys — nothing to poll or show.
+  """
+  @spec configured?() :: boolean()
+  def configured?, do: config(:model_configured, false)
+
+  @doc """
+  Whether Granville is actually up and ready to serve. Checking for the
+  socket file is a real signal, not a guess: server.zig only opens the
+  Unix socket after all models finish loading, so its presence means the
+  model is loaded, not just that the download finished.
+  """
+  @spec ready?() :: boolean()
+  def ready?, do: File.exists?(socket_path())
+
   @impl true
   def complete(prompt, opts \\ []) do
     id = request_id()

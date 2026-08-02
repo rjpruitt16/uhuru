@@ -2,6 +2,7 @@ defmodule UhuruWeb.ChatLive do
   use UhuruWeb, :live_view
 
   alias Uhuru.{Chat, Conversations, Vault}
+  alias Uhuru.Providers.Granville
 
   # Together's model listing doesn't reliably flag which models are callable
   # on shared serverless capacity vs. which need a paid dedicated endpoint —
@@ -45,6 +46,12 @@ defmodule UhuruWeb.ChatLive do
 
   defp init_chat(socket) do
     default = hd(@model_choices)
+    granville_configured = Granville.configured?()
+    granville_ready = granville_configured and Granville.ready?()
+
+    if connected?(socket) and granville_configured and not granville_ready do
+      Process.send_after(self(), :check_granville, 3000)
+    end
 
     socket
     |> assign(
@@ -58,9 +65,18 @@ defmodule UhuruWeb.ChatLive do
       pending: false,
       next_id: 1,
       current_thread_id: nil,
-      threads: Conversations.list_threads()
+      threads: Conversations.list_threads(),
+      granville_configured: granville_configured,
+      granville_ready: granville_ready
     )
     |> stream(:messages, [])
+  end
+
+  @impl true
+  def handle_info(:check_granville, socket) do
+    ready = Granville.ready?()
+    unless ready, do: Process.send_after(self(), :check_granville, 3000)
+    {:noreply, assign(socket, granville_ready: ready)}
   end
 
   @impl true
@@ -338,6 +354,15 @@ defmodule UhuruWeb.ChatLive do
                     </span>
                     <span class="rail-label">model</span>
                     <span class="rail-value">{provider_label(@provider)}</span>
+                  </div>
+
+                  <div :if={@granville_configured} class="rail-item rail-status">
+                    <span class={"dot #{if @granville_ready, do: "dot-local", else: "dot-cloud"}"}>
+                    </span>
+                    <span class="rail-label">local model</span>
+                    <span class="rail-value">
+                      {if @granville_ready, do: "loaded", else: "downloading / loading…"}
+                    </span>
                   </div>
 
                   <button type="button" phx-click="toggle_redact" class="rail-item">

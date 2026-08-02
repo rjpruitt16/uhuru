@@ -2,6 +2,24 @@
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
+# Two deployment profiles, toggled by hand (this repo auto-deploys on every
+# push to main via .github/workflows/fly-deploy.yml, so whichever profile is
+# committed here is what actually ships):
+#
+#   FULL (current):  local model bundled (Granville + Gemma 3 4B), needs the
+#                     granville_models volume + a dedicated vCPU/8GB. Costs
+#                     real money even at low usage -- see README's
+#                     self-hosting cost section for the numbers.
+#   LEAN:             Together-only, no local model, no volume. To switch:
+#                       1. remove GRANVILLE_MODEL_URL / GRANVILLE_MODEL_PATH
+#                          from [env] below
+#                       2. remove the [[mounts]] block
+#                       3. change [[vm]] back to:
+#                            cpu_kind = 'shared'
+#                            cpus = 1
+#                            memory = '1gb'
+#                     Costs a couple dollars/month at low usage, no
+#                     dedicated CPU required.
 
 app = 'uhuru'
 primary_region = 'dfw'
