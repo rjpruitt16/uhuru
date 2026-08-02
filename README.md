@@ -79,6 +79,17 @@ The default experience uses Granville and never leaves your machine. When you wa
 
 OTP gives you many lightweight, isolated, supervised processes — real concurrency and fault tolerance without needing Kubernetes or a distributed-systems stack. That runs well on ordinary CPU hardware, which matches the rest of the design: one binary, one SQLite database, LiveView for streaming with minimal JavaScript.
 
+## Self-hosting cost
+
+Self-hosted on your own hardware — a laptop, a home server — is free. Granville runs locally with no metered cost, and nothing ever has to leave the machine.
+
+If you'd rather not run your own box, Fly.io is the recommended hosted path, and Fly's auto-stop makes it genuinely cheap for personal use — you pay for compute only while a request is actually being handled, not for a server sitting idle:
+
+- **App alone (Together as the model, what's deployed today):** a `shared-cpu-1x`/1GB Machine, no persistent volume — the SQLite database restores from Tigris object storage on boot and streams writes back continuously ([Litestream](https://litestream.io)), so there's nothing to provision beyond the app itself. Realistically a couple of dollars a month at low personal usage, and Tigris storage for the backups runs a few cents.
+- **With Granville + a local model bundled in (planned, not built yet):** needs a dedicated vCPU for reasonable inference speed, and a small persistent volume so the model file downloads once instead of on every wake — Fly volumes bill for capacity whether attached or not, so that's a small constant cost layered on top of pay-per-use compute. Worked estimate for a Gemma 3 4B–class model at ~20 hours of actual monthly usage: `performance-1x`/8GB compute (~$1.76), a 3GB model-cache volume (~$0.45), Tigris backup storage (~$0.10) — **roughly $2.30/month**.
+
+These are real numbers as researched in mid-2026, not guarantees — provider pricing changes. The point isn't the exact figure, it's that owning your own AI workspace doesn't require a server running 24/7 to be practical.
+
 ## MVP scope
 
 **In:** chat, streaming responses, conversation history, local memory, web search, provider adapters (Granville local by default, Together AI opt-in).
