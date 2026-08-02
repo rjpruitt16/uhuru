@@ -9,12 +9,21 @@ kill_signal = 'SIGTERM'
 
 [build]
 [env]
-  # No persistent volume: Litestream restores this from Tigris on every
-  # boot and streams writes back continuously (see litestream.sh). An
-  # ephemeral path is intentional, not an oversight.
+  # No persistent volume for the DB: Litestream restores this from Tigris
+  # on every boot and streams writes back continuously (see litestream.sh).
+  # An ephemeral path is intentional, not an oversight.
   DATABASE_PATH = '/tmp/uhuru.db'
   PHX_HOST = 'uhuru.fly.dev'
   PORT = '8080'
+  # Local model, cached on the granville_models volume so it downloads once,
+  # not on every wake. bartowski's community GGUF -- Google's own repo is
+  # gated/auth-required, this one isn't. ~2.49GB, verified reachable.
+  GRANVILLE_MODEL_URL = 'https://huggingface.co/bartowski/google_gemma-3-4b-it-GGUF/resolve/main/google_gemma-3-4b-it-Q4_K_M.gguf'
+  GRANVILLE_MODEL_PATH = '/data/gemma-3-4b-it-Q4_K_M.gguf'
+
+[[mounts]]
+  source = 'granville_models'
+  destination = '/data'
 
 [http_service]
   internal_port = 8080
@@ -30,7 +39,5 @@ kill_signal = 'SIGTERM'
     soft_limit = 1000
 
 [[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
-  cpus = 1
-  memory_mb = 1024
+  size = 'performance-1x'
+  memory = '8gb'
