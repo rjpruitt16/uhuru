@@ -13,7 +13,12 @@
 #
 ARG ELIXIR_VERSION=1.20.0
 ARG OTP_VERSION=29.0.1
-ARG DEBIAN_VERSION=bullseye-20260610-slim
+# Bookworm, not Bullseye: exqlite's precompiled NIF needs GLIBC_2.33+.
+# Bullseye only ever shipped 2.31.x regardless of snapshot date, which
+# crash-looped every machine on first real deploy with "version
+# `GLIBC_2.33' not found" -- caught via an actual fly deploy, not
+# something a local build would have surfaced.
+ARG DEBIAN_VERSION=bookworm-20260610-slim
 
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
 ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"
