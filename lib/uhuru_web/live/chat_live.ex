@@ -282,13 +282,12 @@ defmodule UhuruWeb.ChatLive do
     <div class="uhuru-shell">
       <div class="grain"></div>
 
-      <header class="uhuru-header">
-        <div class="wordmark">UHURU</div>
-        <div class="tagline">a privacy-first ai workspace, built on open models</div>
-      </header>
-
       <%= case @vault_state do %>
         <% :needs_setup -> %>
+          <header class="uhuru-header">
+            <div class="wordmark">UHURU</div>
+            <div class="tagline">a privacy-first ai workspace, built on open models</div>
+          </header>
           <.vault_gate
             title="set a passphrase"
             hint="this encrypts everything stored locally. it is never saved anywhere — if you forget it, your data cannot be recovered."
@@ -297,6 +296,10 @@ defmodule UhuruWeb.ChatLive do
             confirm={true}
           />
         <% :locked -> %>
+          <header class="uhuru-header">
+            <div class="wordmark">UHURU</div>
+            <div class="tagline">a privacy-first ai workspace, built on open models</div>
+          </header>
           <.vault_gate
             title="enter your passphrase"
             hint="unlocks this session only. nothing is ever written to disk."
@@ -306,6 +309,9 @@ defmodule UhuruWeb.ChatLive do
         <% :unlocked -> %>
           <div class="app-body">
             <aside class="sidebar">
+              <div class="sidebar-brand">
+                <div class="wordmark">UHURU</div>
+              </div>
               <button type="button" phx-click="new_chat" class="sidebar-new">+ new thread</button>
               <div class="sidebar-threads">
                 <button
@@ -326,32 +332,34 @@ defmodule UhuruWeb.ChatLive do
 
             <div class="chat-column">
               <div class="rail">
-                <div class="rail-item rail-status">
-                  <span class={"dot #{if @provider == :granville, do: "dot-local", else: "dot-cloud"}"}>
-                  </span>
-                  <span class="rail-label">model</span>
-                  <span class="rail-value">{provider_label(@provider)}</span>
-                </div>
+                <div class="rail-inner">
+                  <div class="rail-item rail-status">
+                    <span class={"dot #{if @provider == :granville, do: "dot-local", else: "dot-cloud"}"}>
+                    </span>
+                    <span class="rail-label">model</span>
+                    <span class="rail-value">{provider_label(@provider)}</span>
+                  </div>
 
-                <button type="button" phx-click="toggle_redact" class="rail-item">
-                  <span class={"dot #{if @redact, do: "dot-cloud", else: "dot-off"}"}></span>
-                  <span class="rail-label">redaction</span>
-                  <span class="rail-value">
-                    {if @redact, do: "ON — PII stripped before inference (slower)", else: "OFF"}
-                  </span>
-                </button>
+                  <button type="button" phx-click="toggle_redact" class="rail-item">
+                    <span class={"dot #{if @redact, do: "dot-cloud", else: "dot-off"}"}></span>
+                    <span class="rail-label">redaction</span>
+                    <span class="rail-value">
+                      {if @redact, do: "ON — PII stripped before inference (slower)", else: "OFF"}
+                    </span>
+                  </button>
 
-                <button type="button" phx-click="lock_vault" class="rail-item">
-                  <span class="dot dot-local"></span>
-                  <span class="rail-label">vault</span>
-                  <span class="rail-value">unlocked — click to lock</span>
-                </button>
+                  <button type="button" phx-click="lock_vault" class="rail-item">
+                    <span class="dot dot-local"></span>
+                    <span class="rail-label">vault</span>
+                    <span class="rail-value">unlocked — click to lock</span>
+                  </button>
 
-                <div class={"rail-item rail-status #{if @pending, do: "rail-status-active"}"}>
-                  <span class="pulse"></span>
-                  <span class="rail-value">
-                    {if @pending, do: "awaiting response…", else: "idle"}
-                  </span>
+                  <div class={"rail-item rail-status #{if @pending, do: "rail-status-active"}"}>
+                    <span class="pulse"></span>
+                    <span class="rail-value">
+                      {if @pending, do: "awaiting response…", else: "idle"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -372,29 +380,33 @@ defmodule UhuruWeb.ChatLive do
               </main>
 
               <div class="dock-wrap">
-                <form phx-change="select_model" class="dock-model-form">
-                  <select name="model_choice" class="dock-model-select">
-                    <option
-                      :for={choice <- @model_choices}
-                      value={choice.value}
-                      selected={choice.value == @model_choice}
-                    >
-                      {choice.label}
-                    </option>
-                  </select>
-                </form>
+                <div class="dock-inner">
+                  <form phx-change="select_model" class="dock-model-form">
+                    <select name="model_choice" class="dock-model-select">
+                      <option
+                        :for={choice <- @model_choices}
+                        value={choice.value}
+                        selected={choice.value == @model_choice}
+                      >
+                        {choice.label}
+                      </option>
+                    </select>
+                  </form>
 
-                <form phx-submit="send" phx-change="update_draft" class="dock">
-                  <textarea
-                    name="message[text]"
-                    class="dock-input"
-                    placeholder="speak freely — this stays on your machine unless you say otherwise"
-                    rows="2"
-                  >{@draft}</textarea>
-                  <button type="submit" class="dock-submit" disabled={@pending}>
-                    {if @pending, do: "…", else: "send"}
-                  </button>
-                </form>
+                  <form phx-submit="send" phx-change="update_draft" class="dock">
+                    <textarea
+                      id="message-input"
+                      name="message[text]"
+                      class="dock-input"
+                      placeholder="speak freely — this stays on your machine unless you say otherwise"
+                      rows="2"
+                      phx-hook="SubmitOnEnter"
+                    >{@draft}</textarea>
+                    <button type="submit" class="dock-submit" disabled={@pending}>
+                      {if @pending, do: "…", else: "send"}
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
