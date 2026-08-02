@@ -90,32 +90,66 @@ body {
   flex-direction: column;
 }
 
+.sidebar-thread-row {
+  display: flex;
+  align-items: stretch;
+  border-left: 2px solid transparent;
+  transition: background 0.15s ease;
+}
+
+.sidebar-thread-row:hover {
+  background: #211d15;
+}
+
+.sidebar-thread-row-active {
+  border-left-color: var(--local);
+  background: #211d15;
+}
+
 .sidebar-thread {
+  flex: 1;
+  min-width: 0;
   text-align: left;
   background: transparent;
   border: none;
-  border-left: 2px solid transparent;
   color: var(--ink-dim);
   font-family: "Fraunces", Georgia, serif;
   font-size: 0.82rem;
   line-height: 1.3;
-  padding: 0.55rem 0.9rem;
+  padding: 0.55rem 0.5rem 0.55rem 0.9rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition: color 0.15s ease;
 }
 
-.sidebar-thread:hover {
+.sidebar-thread-row:hover .sidebar-thread,
+.sidebar-thread-row-active .sidebar-thread {
   color: var(--ink);
-  background: #211d15;
 }
 
-.sidebar-thread-active {
-  color: var(--ink);
-  border-left-color: var(--local);
-  background: #211d15;
+.sidebar-delete {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-thread-row:hover .sidebar-delete,
+.sidebar-thread-row-active .sidebar-delete {
+  opacity: 1;
+}
+
+.sidebar-delete:hover {
+  color: var(--error);
 }
 
 .sidebar-empty {
@@ -309,20 +343,133 @@ body {
   color: var(--ink-faint);
 }
 
+.log-tool-call {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+  font-style: italic;
+  margin-bottom: 0.5rem;
+}
+
 .log-text {
-  margin: 0;
   font-family: "Fraunces", Georgia, serif;
   font-optical-sizing: auto;
   font-size: 1.05rem;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--ink);
-  white-space: pre-wrap;
 }
 
 .log-entry-error .log-text {
   color: var(--error);
   font-family: inherit;
   font-size: 0.85rem;
+}
+
+/* Earmark-rendered markdown content -- the actual fix for the "squished"
+   feeling: unrendered markdown syntax (##, **, backticks) cluttering flat
+   text reads as dense no matter how much padding surrounds it. */
+.log-text :first-child {
+  margin-top: 0;
+}
+
+.log-text :last-child {
+  margin-bottom: 0;
+}
+
+.log-text p {
+  margin: 0 0 0.9em;
+}
+
+.log-text h1,
+.log-text h2,
+.log-text h3,
+.log-text h4 {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  margin: 1.3em 0 0.5em;
+  line-height: 1.3;
+}
+
+.log-text h1 {
+  font-size: 1.15rem;
+}
+.log-text h2 {
+  font-size: 1.05rem;
+}
+.log-text h3,
+.log-text h4 {
+  font-size: 0.95rem;
+}
+
+.log-text ul,
+.log-text ol {
+  margin: 0 0 0.9em;
+  padding-inline-start: 1.4em;
+}
+
+.log-text li {
+  margin: 0.3em 0;
+}
+
+.log-text li > ul,
+.log-text li > ol {
+  margin: 0.3em 0;
+}
+
+.log-text strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.log-text em {
+  font-style: italic;
+}
+
+.log-text a {
+  color: var(--local);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.log-text blockquote {
+  margin: 0 0 0.9em;
+  padding-left: 0.9em;
+  border-left: 2px solid var(--hairline);
+  color: var(--ink-dim);
+  font-style: italic;
+}
+
+.log-text code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.85em;
+  background: var(--ground);
+  border: 1px solid var(--hairline);
+  padding: 0.1em 0.35em;
+}
+
+.log-text pre {
+  margin: 0 0 0.9em;
+  padding: 0.85em 1em;
+  background: var(--ground);
+  border: 1px solid var(--hairline);
+  overflow-x: auto;
+}
+
+.log-text pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.log-text hr {
+  border: none;
+  border-top: 1px solid var(--hairline);
+  margin: 1.3em 0;
 }
 
 .dock-wrap {
@@ -340,6 +487,15 @@ body {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 0.5rem;
+}
+
+.dock-model-locked {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+  color: var(--ink-faint);
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
 }
 
 .dock-model-select {

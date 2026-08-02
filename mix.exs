@@ -58,7 +58,8 @@ defmodule Uhuru.MixProject do
       {:bandit, "~> 1.5"},
       {:msgpax, "~> 2.4"},
       {:req, "~> 0.5"},
-      {:argon2_elixir, "~> 4.1"}
+      {:argon2_elixir, "~> 4.1"},
+      {:earmark, "~> 1.4"}
     ]
   end
 

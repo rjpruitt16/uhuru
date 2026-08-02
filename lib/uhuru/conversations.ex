@@ -26,11 +26,14 @@ defmodule Uhuru.Conversations do
     Repo.all(from m in Message, where: m.thread_id == ^thread_id, order_by: [asc: m.inserted_at])
   end
 
-  @doc "Create a new thread, titled from the first message's text."
-  @spec create_thread(String.t()) :: {:ok, Thread.t()} | {:error, Ecto.Changeset.t()}
-  def create_thread(first_message_text) do
+  @doc """
+  Create a new thread, titled from the first message's text. model_choice
+  is locked in at creation and never changes -- see Thread's moduledoc.
+  """
+  @spec create_thread(String.t(), String.t()) :: {:ok, Thread.t()} | {:error, Ecto.Changeset.t()}
+  def create_thread(first_message_text, model_choice) do
     %Thread{}
-    |> Thread.changeset(%{title: title_from(first_message_text)})
+    |> Thread.changeset(%{title: title_from(first_message_text), model_choice: model_choice})
     |> Repo.insert()
   end
 
@@ -46,6 +49,14 @@ defmodule Uhuru.Conversations do
     end
 
     result
+  end
+
+  @spec delete_thread(integer()) :: {:ok, Thread.t()} | {:error, Ecto.Changeset.t()} | nil
+  def delete_thread(id) do
+    case Repo.get(Thread, id) do
+      nil -> nil
+      thread -> Repo.delete(thread)
+    end
   end
 
   defp touch_thread(thread_id) do

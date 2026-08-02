@@ -7,6 +7,10 @@ defmodule Uhuru.Search.Exa do
 
   @type result :: %{title: String.t() | nil, url: String.t(), text: String.t() | nil}
 
+  @doc "Whether an Exa API key is configured -- gates whether web_search is ever offered as a tool."
+  @spec configured?() :: boolean()
+  def configured?, do: not is_nil(api_key())
+
   @spec search(String.t(), keyword()) :: {:ok, [result()]} | {:error, term()}
   def search(query, opts \\ []) do
     case api_key() do

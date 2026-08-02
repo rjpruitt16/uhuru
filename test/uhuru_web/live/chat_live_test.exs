@@ -141,6 +141,18 @@ defmodule UhuruWeb.ChatLiveTest do
       refute html =~ "log-entry-user"
     end
 
+    test "user messages don't show a YOU tag; replies show a model + adapter tag", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html = view |> form("form.dock", message: %{text: "hello, uhuru"}) |> render_submit()
+      refute html =~ ">YOU<"
+
+      html = render_async(view)
+      assert html =~ "ERROR"
+      assert html =~ "Gemma 3 4B"
+      assert html =~ "Granville"
+    end
+
     test "sending a message with no provider configured surfaces a graceful error", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
 
@@ -187,9 +199,16 @@ defmodule UhuruWeb.ChatLiveTest do
     end
 
     test "selecting a thread from the sidebar loads its messages", %{conn: conn} do
-      {:ok, thread} = Conversations.create_thread("an older conversation")
+      {:ok, thread} = Conversations.create_thread("an older conversation", "granville")
       {:ok, _} = Conversations.create_message(thread.id, %{role: :user, content: "an older conversation"})
-      {:ok, _} = Conversations.create_message(thread.id, %{role: :assistant, content: "an older reply", provider: :granville})
+
+      {:ok, _} =
+        Conversations.create_message(thread.id, %{
+          role: :assistant,
+          content: "an older reply",
+          provider: :granville,
+          model: "Gemma 3 4B"
+        })
 
       {:ok, view, _html} = live(conn, ~p"/")
 
@@ -197,6 +216,56 @@ defmodule UhuruWeb.ChatLiveTest do
 
       assert html =~ "an older conversation"
       assert html =~ "an older reply"
+    end
+
+    test "the model picker locks once a thread has started, and shows which model is locked in", %{
+      conn: conn
+    } do
+      {:ok, view, html} = live(conn, ~p"/")
+      assert html =~ "dock-model-select"
+      refute html =~ "dock-model-locked"
+
+      html = view |> form("form.dock", message: %{text: "hello"}) |> render_submit()
+
+      assert html =~ "dock-model-locked"
+      assert html =~ "locked for this thread"
+      refute html =~ "dock-model-select"
+    end
+
+    test "delete_thread removes it from the sidebar and resets to new-chat if it was open", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html = view |> form("form.dock", message: %{text: "a thread worth deleting"}) |> render_submit()
+      assert html =~ "a thread worth deleting"
+
+      [thread] = Conversations.list_threads()
+
+      html = view |> element("button.sidebar-delete") |> render_click()
+
+      refute html =~ "a thread worth deleting"
+      assert html =~ "dock-model-select"
+      assert Conversations.list_threads() == []
+      assert Conversations.get_thread(thread.id) == nil
+    end
+
+    test "markdown in a reply renders as real HTML, not literal syntax characters", %{conn: conn} do
+      {:ok, thread} = Conversations.create_thread("markdown test", "granville")
+
+      {:ok, _} =
+        Conversations.create_message(thread.id, %{
+          role: :assistant,
+          content: "# Heading\n\n**bold** and a list:\n\n- one\n- two",
+          provider: :granville,
+          model: "Gemma 3 4B"
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/")
+      html = view |> element("button.sidebar-thread", "markdown test") |> render_click()
+
+      assert html =~ "<h1"
+      assert html =~ "<strong>bold</strong>"
+      assert html =~ "<li>"
+      refute html =~ "**bold**"
     end
   end
 end

@@ -6,8 +6,15 @@ defmodule Uhuru.Providers.Granville do
   The protocol is callback-based, not request/response: we open a temporary
   Unix socket, send a request naming that socket as `callback`, get an
   immediate ACK on the original connection, then wait for Granville to
-  connect *back* to our callback socket with the real result once
-  inference finishes.
+  connect *back* to our callback socket. That callback connection is held
+  open for the whole task: zero or more `%{"id" => id, "delta" => text}`
+  chunk messages arrive as Granville generates each token, followed by
+  exactly one final message -- either the normal result shape (with
+  `tool_input_json`, discarded here since the deltas already carried the
+  text) or an `%{"error" => ...}` message. MessagePack has no built-in
+  framing, so multiple messages back-to-back on one connection can arrive
+  split across TCP reads or bunched together -- see drain_messages/2 for
+  the buffer-until-complete decode loop this requires.
 
   PII redaction (`opts[:ranked]`, default `false`) is an explicit opt-in,
   not automatic. Granville's ranking pass that redacts PII is a second full
@@ -34,8 +41,32 @@ defmodule Uhuru.Providers.Granville do
   @spec ready?() :: boolean()
   def ready?, do: File.exists?(socket_path())
 
+  @doc "Friendly name for whatever model this deploy bundles, for message tags."
+  @spec model_label() :: String.t()
+  def model_label, do: config(:model_label, "Local Model")
+
   @impl true
   def complete(prompt, opts \\ []) do
+    Process.put(:granville_complete_acc, [])
+    on_chunk = fn chunk -> Process.put(:granville_complete_acc, [chunk | Process.get(:granville_complete_acc, [])]) end
+
+    result =
+      case stream(prompt, on_chunk, opts) do
+        :ok -> {:ok, Process.get(:granville_complete_acc, []) |> Enum.reverse() |> Enum.join()}
+        {:error, _reason} = error -> error
+      end
+
+    Process.delete(:granville_complete_acc)
+    result
+  end
+
+  @doc """
+  Same call, but streamed: `on_chunk.(text_delta)` fires once per token
+  delta as Granville produces it, instead of waiting for the whole reply.
+  Returns :ok once the stream completes, or {:error, _}.
+  """
+  @spec stream(String.t(), (String.t() -> any()), keyword()) :: :ok | {:error, term()}
+  def stream(prompt, on_chunk, opts \\ []) do
     id = request_id()
     callback_path = callback_socket_path(id)
     File.rm(callback_path)
@@ -44,7 +75,7 @@ defmodule Uhuru.Providers.Granville do
       {:ok, listen_socket} ->
         result =
           with :ok <- send_request(id, prompt, callback_path, opts) do
-            await_result(listen_socket)
+            await_stream(listen_socket, on_chunk)
           end
 
         :gen_tcp.close(listen_socket)
@@ -93,23 +124,54 @@ defmodule Uhuru.Providers.Granville do
     end
   end
 
-  defp await_result(listen_socket) do
-    with {:ok, conn} <- :gen_tcp.accept(listen_socket, timeout()),
-         {:ok, bytes} <- :gen_tcp.recv(conn, 0, timeout()) do
+  defp await_stream(listen_socket, on_chunk) do
+    with {:ok, conn} <- :gen_tcp.accept(listen_socket, timeout()) do
+      result = read_stream(conn, "", on_chunk)
       :gen_tcp.close(conn)
-
-      case Msgpax.unpack!(bytes) do
-        %{"error" => reason} -> {:error, reason}
-        %{"tool_input_json" => json} -> {:ok, decode_text(json)}
-        other -> {:error, {:unexpected_result, other}}
-      end
+      result
     end
   end
 
-  defp decode_text(json) do
-    case Jason.decode(json) do
-      {:ok, [text | _]} -> text
-      _ -> json
+  defp read_stream(conn, buffer, on_chunk) do
+    case drain_messages(buffer, on_chunk) do
+      {:done, result} ->
+        result
+
+      {:continue, remaining} ->
+        case :gen_tcp.recv(conn, 0, timeout()) do
+          {:ok, bytes} -> read_stream(conn, remaining <> bytes, on_chunk)
+          {:error, :closed} -> {:error, :connection_closed_without_result}
+          {:error, reason} -> {:error, reason}
+        end
+    end
+  end
+
+  # Decodes as many complete MessagePack terms as are currently in the
+  # buffer, firing on_chunk for each delta, until either the final message
+  # (result or error) is found or the buffer runs out mid-term.
+  defp drain_messages(buffer, on_chunk) do
+    case Msgpax.unpack_slice(buffer) do
+      {:ok, %{"error" => reason}, _rest} ->
+        {:done, {:error, reason}}
+
+      # The final result still carries the full text (see server.zig), but
+      # every token already arrived as a delta -- nothing left to do here
+      # but signal completion.
+      {:ok, %{"tool_input_json" => _json}, _rest} ->
+        {:done, :ok}
+
+      {:ok, %{"delta" => delta}, rest} ->
+        on_chunk.(delta)
+        drain_messages(rest, on_chunk)
+
+      {:ok, _other, rest} ->
+        drain_messages(rest, on_chunk)
+
+      {:error, %Msgpax.UnpackError{reason: :incomplete}} ->
+        {:continue, buffer}
+
+      {:error, reason} ->
+        {:done, {:error, {:decode_failed, reason}}}
     end
   end
 
