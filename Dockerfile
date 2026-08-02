@@ -47,7 +47,7 @@ ENV PATH="/usr/local/zig:${PATH}"
 
 # Pin to a tagged release, not main -- reproducible builds shouldn't track a
 # moving branch. Bump this deliberately when a new Granville version ships.
-ARG GRANVILLE_VERSION=v0.4.0
+ARG GRANVILLE_VERSION=v0.3.1
 RUN git clone --branch ${GRANVILLE_VERSION} --depth 1 \
     https://github.com/rjpruitt16/granville.git /granville
 WORKDIR /granville
