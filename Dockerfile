@@ -53,9 +53,21 @@ RUN git clone --branch ${GRANVILLE_VERSION} --depth 1 \
 WORKDIR /granville
 RUN zig build -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseFast
 # Fetches the prebuilt granville-llama driver from its own GitHub release --
-# no need to compile llama.cpp/cmake/g++ in this image.
+# no need to compile llama.cpp/cmake/g++ in this image. Pinned explicitly
+# to a tag rather than using `granville driver install` (which always
+# hits /releases/latest/, a mutable URL) -- Docker's layer cache keys on
+# the RUN command text, not on what a mutable URL actually resolves to
+# today, so a `latest`-fetching RUN silently keeps serving whatever it
+# cached from the first time it ran, even after a newer release ships.
+# That shipped a SIGILL-crashing driver to production for two deploys
+# in a row before this was caught. Bump deliberately, same as above.
 ENV HOME=/root
-RUN ./zig-out/bin/granville driver install granville-llama
+ARG GRANVILLE_LLAMA_VERSION=v0.1.14
+RUN mkdir -p /root/.granville/drivers/granville-llama \
+    && curl -fL -o /tmp/granville-llama.tar.gz \
+       "https://github.com/rjpruitt16/granville-llama/releases/download/${GRANVILLE_LLAMA_VERSION}/granville-llama-linux-x86_64.tar.gz" \
+    && tar -xzf /tmp/granville-llama.tar.gz -C /root/.granville/drivers/granville-llama --strip-components=1 \
+    && rm /tmp/granville-llama.tar.gz
 
 FROM ${BUILDER_IMAGE} AS builder
 
